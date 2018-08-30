@@ -1,23 +1,13 @@
 import argparse
-import copy
 import json
 import sys
 import time
-from collections import OrderedDict
-import time
 
-import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
 import torch
-import torch.nn.functional as F
 from PIL import Image
-from torch import nn, optim
 from torch.autograd import Variable
-from torch.optim import lr_scheduler
-from torchvision import datasets, models, transforms
-
-
+from torchvision import models
 
 parser = argparse.ArgumentParser(description='PyTorch Image Predicter')
 parser.add_argument('image', type=str,
@@ -54,13 +44,21 @@ def main():
 
 
 def load_model(checkpoint, device):
+    '''
+    loads model from checkpoint
+    params:
+        checkpoint - checkpoint of already trained CNN with custom classifier
+        device - cuda or cpu
+    returns:
+        the loaded model, loaded model's architecture, class to index mapping
+    '''
 
     model_names = sorted(name for name in models.__dict__
                          if name.islower() and not name.startswith("__")
                          and callable(models.__dict__[name]) and name.startswith('vg'))
 
-    if device == 'cpu':
-        model_trained = torch.load(checkpoint, map_location=device)
+    if str(device) == "cpu":
+        model_trained = torch.load(checkpoint, map_location=str(device))
     else:
         model_trained = torch.load(checkpoint)
 
@@ -84,8 +82,12 @@ def load_model(checkpoint, device):
 
 
 def process_image(image_path):
-    ''' Scales, crops, and normalizes a PIL image for a PyTorch model,
-        returns an Numpy array
+    '''
+    normalizes an image
+    params:
+        image_path - full file path to image
+    returns:
+        numpy array
     '''
 
     image = Image.open(image_path, 'r')
@@ -93,25 +95,25 @@ def process_image(image_path):
     # image resizing
 
     if image.size[0] > image.size[1]:
-        image.thumbnail((100000, 256))  # abritrary maximums
+        image.thumbnail((100000, 256))  # abritrary maximum
     else:
-        image.thumbnail((256, 100000))
+        image.thumbnail((256, 100000))  # abritrary maximum
 
     # image cropping, calculating margins needed
 
-    left = (image.width - 224) / 2
-    bottom = (image.height - 224) / 2
-    right = left + 224
-    top = bottom + 224
+    l = (image.width - 224) / 2  # left
+    b = (image.height - 224) / 2  # bottom
+    r = l + 224  # right
+    t = b + 224  # top
 
-    image = image.crop((left, bottom, right, top))
+    image = image.crop((l, b, r, t))
 
     # image normalisation
 
-    image = np.array(image) / 255
+    image = np.array(image) / 255  # between zero and one
     mean = np.array([0.485, 0.456, 0.406])  # this was provided
     stdev = np.array([0.229, 0.224, 0.225])  # this was provided
-    image = (image - mean) / stdev  # normalised
+    image = (image - mean) / stdev  # normalized
 
     # color channels need to be in first dimension, per PyTorch requirements
 
@@ -121,7 +123,9 @@ def process_image(image_path):
 
 
 def predict(image, model, topk, device, category_names, class_idx):
-    ''' Predict the class (or classes) of an image using a trained deep learning model.
+    ''' predicts the class (or classes) of an image using a trained CNN model
+    params:
+        image -
     '''
     img_tensor = torch.from_numpy(image).type(
         torch.FloatTensor)  # convert img to numpy
@@ -159,6 +163,7 @@ def print_predictions(classes, probs):
     for i in range(len(predictions)):
         print('=> {} : {:.3%}'.format(predictions[i][0], predictions[i][1]))
     pass
+
 
 if __name__ == '__main__':
     main()
